@@ -1,11 +1,28 @@
 from abc import abstractmethod
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-from syncstore import SyncResult, SyncStore
+from dataclasses_json import DataClassJsonMixin
+
+from .syncstore import SyncResult, SyncStore
+
+
+class ValueType(Enum):
+    # tbd: extend
+    NONE = "none"
+    STRING = "string"
+    BYTES = "bytes"
 
 
 @dataclass
-class Change:
+class Value:
+    value_type: ValueType
+    value: str
+
+
+@dataclass
+class Change(DataClassJsonMixin):
     """
     serializable object corresponding to a row of the virtual crsql_changes table:
     https://vlcn.io/docs/cr-sqlite/api-methods/crsql_changes
@@ -21,18 +38,18 @@ class Change:
     """
 
     table: str
-    pk: str
+    pk: Value
     cid: str
-    val: str  # hex bytes falls bytes
+    val: Value
     col_version: int
     db_version: int
-    site_id: str  # hex bytes
+    site_id: Value
     cl: int
     seq: int
 
 
 @dataclass
-class Changes:
+class Changes(DataClassJsonMixin):
     changes: list[Change]  # list of all changes
     version: int  # version at which these changes were created
     from_site_id: str  # site_id which created these changes
@@ -40,6 +57,10 @@ class Changes:
 
 @dataclass
 class VersionedChangesSyncStore(SyncStore):
+    """
+    abstract algorithm to sync data changes between two stores,
+    comprised of functionality which may be implemented e.g. via local or remote operations
+    """
 
     remote_syncstore: "VersionedChangesSyncStore | None"
 
@@ -70,7 +91,7 @@ class VersionedChangesSyncStore(SyncStore):
 
         site_id = self.get_site_id()
 
-        # tbd: only first time, then from local changes table
+        # tbd: only first time, then from local changes table?
         remote_site_id = self.remote_syncstore.get_site_id()
 
         # pull

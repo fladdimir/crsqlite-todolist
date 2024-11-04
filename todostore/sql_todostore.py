@@ -10,7 +10,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from todostore import TodoItem, TodoList, TodoStore
+from .todostore import TodoItem, TodoList, TodoStore
 
 
 class TodoBase(DeclarativeBase, MappedAsDataclass):
@@ -37,10 +37,11 @@ class PTodoList(TodoBase):
     )
     title: Mapped[str] = mapped_column(nullable=True, default=None)
     todos: Mapped[list[PTodoItem]] = relationship(
-        cascade="merge",
+        cascade="all, delete-orphan",
         default_factory=list,
         foreign_keys="PTodoItem.list_id",
         primaryjoin="PTodoItem.list_id == PTodoList.list_id",
+        order_by="PTodoItem.item_id",
     )
 
 

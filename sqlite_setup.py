@@ -8,6 +8,7 @@ def set_foreign_keys_pragma(dbapi_connection: Connection, connection_record):
     cursor = dbapi_connection.cursor()
     # cursor.execute("PRAGMA foreign_keys = ON")
     cursor.execute("PRAGMA foreign_keys = OFF")
+    # crsqlite is not supporting foreign keys
     cursor.close()
     print("foreign_keys pragma set")
 

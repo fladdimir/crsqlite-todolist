@@ -12,9 +12,11 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 
-from syncstore_impl.versioned_changes_syncstore import (
+from syncstore.versioned_changes_syncstore import (
     Change,
     Changes,
+    Value,
+    ValueType,
     VersionedChangesSyncStore,
 )
 
@@ -48,7 +50,7 @@ class PChange(PCrsqliteBase):
     __tablename__ = "crsql_changes"
 
     table: Mapped[str] = mapped_column(primary_key=True)
-    pk: Mapped[str] = mapped_column(primary_key=True)
+    pk: Mapped[Any] = mapped_column(TEXT, primary_key=True)
     cid: Mapped[str] = mapped_column(primary_key=True)
     val: Mapped[Any] = mapped_column(TEXT)
     col_version: Mapped[int] = mapped_column(primary_key=True)
@@ -58,22 +60,35 @@ class PChange(PCrsqliteBase):
     seq: Mapped[int]
 
 
-def get_db_val(val: Any) -> Any:
-    try:
-        return bytes.fromhex(val)
-    except ValueError:
-        return val
+def from_value(val: Value) -> Any:
+    if ValueType.NONE == val.value_type:
+        return None
+    if ValueType.BYTES == val.value_type:
+        return bytes.fromhex(val.value)
+    if ValueType.STRING == val.value_type:
+        return val.value
+    raise NotImplementedError()
+
+
+def to_value(val: Any) -> Value:
+    if val is None:
+        return Value(ValueType.NONE, "")
+    if isinstance(val, bytes):
+        return Value(ValueType.BYTES, val.hex())
+    if isinstance(val, str):
+        return Value(ValueType.STRING, val)
+    raise NotImplementedError(f"type: {type(val)} - val: {val}")
 
 
 def to_pchange(c: Change) -> PChange:
     return PChange(
         table=c.table,
-        pk=c.pk,
+        pk=from_value(c.pk),
         cid=c.cid,
-        val=get_db_val(c.val),
+        val=from_value(c.val),
         col_version=c.col_version,
         db_version=c.db_version,
-        site_id=bytes.fromhex(c.site_id),
+        site_id=from_value(c.site_id),
         cl=c.cl,
         seq=c.seq,
     )
@@ -82,13 +97,12 @@ def to_pchange(c: Change) -> PChange:
 def to_change(pc: PChange) -> Change:
     return Change(
         table=pc.table,
-        pk=pc.pk,
+        pk=to_value(pc.pk),
         cid=pc.cid,
-        val=pc.val.hex() if isinstance(pc.val, bytes) else pc.val,
-        # TODO: val_type ?
+        val=to_value(pc.val),
         col_version=pc.col_version,
         db_version=pc.db_version,
-        site_id=pc.site_id.hex(),
+        site_id=to_value(pc.site_id),
         cl=pc.cl,
         seq=pc.seq,
     )
@@ -96,13 +110,14 @@ def to_change(pc: PChange) -> Change:
 
 @dataclass
 class CrSqliteSyncStore(VersionedChangesSyncStore):
+    # crsqlite for change tracking + sync operations
 
     engine: Engine
 
     def setup_table_change_tracking(self, tables: list[str]) -> None:
         with self.engine.connect() as c:
             for t in tables:
-                c.execute(text(f"select crsql_as_crr('{t}');"))
+                c.execute(text(f"SELECT crsql_as_crr('{t}');"))
             c.commit()
 
     def get_site_id(self) -> str:

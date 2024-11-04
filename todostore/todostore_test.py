@@ -1,8 +1,8 @@
 import pytest
 
 from sqlite_setup import get_engine
-from todostore import TodoItem, TodoList, TodoStore
-from todostore_impl import SqlTodoStore
+from todostore.todostore import TodoItem, TodoList, TodoStore
+from todostore.sql_todostore import SqlTodoStore
 
 
 @pytest.fixture
@@ -11,7 +11,7 @@ def s(clean_test_db_dir) -> TodoStore:
     return SqlTodoStore("s", engine=engine)
 
 
-def test_crsqlite_store(s: TodoStore):
+def test_todostore(s: TodoStore):
     list_id = "todolist_1"
 
     list_1 = TodoList(list_id=list_id, title="title_1")

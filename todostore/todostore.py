@@ -1,8 +1,8 @@
-from abc import ABC
+from abc import ABCMeta
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
-from syncstore import SyncStore
+from syncstore.syncstore import SyncStore
 
 
 T = TypeVar("T")
@@ -10,7 +10,7 @@ ID = TypeVar("ID")
 
 
 @dataclass
-class EntityStore(ABC, Generic[T, ID]):
+class EntityStore(Generic[T, ID], metaclass=ABCMeta):
     name: str
 
     def save(self, entity: T) -> None: ...

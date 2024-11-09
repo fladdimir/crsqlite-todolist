@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 
 from crsqlite_todo_sync_store import CrSqliteTodoSyncStore as StoreImpl
+from entity_change_checking.entity_change_checker import E
 from sqlite_setup import get_engine
 from syncstore.network.client_sync_store import HttpClientVersionedChangesSyncstore
 from syncstore.network.server_sync_store import run_sync_store_server_callable
@@ -17,6 +18,8 @@ TEST_DB_DIR = "./db"
 HOST = "127.0.0.1"
 PORT = 5000
 
+SQL_ECHO = False
+
 
 @pytest.fixture
 def s0(clean_test_db_dir):  # run after cleanup
@@ -24,7 +27,7 @@ def s0(clean_test_db_dir):  # run after cleanup
         store = StoreImpl(
             "s0",
             remote_syncstore=None,
-            engine=get_engine(db_file=f"{TEST_DB_DIR}/s0.db"),
+            engine=get_engine(db_file=f"{TEST_DB_DIR}/s0.db", echo=SQL_ECHO),
         )
         return store.syncstore
 
@@ -37,7 +40,7 @@ server_process: Process | None = None
 
 
 def run_server_in_separate_process(
-    syncstore_provider: Callable[[], VersionedChangesSyncStore]
+    syncstore_provider: Callable[[], VersionedChangesSyncStore],
 ):
     global server_process
     server_process = Process(
@@ -51,7 +54,6 @@ def run_server_in_separate_process(
 
 @pytest.fixture
 def s1(s0: StoreImpl):
-
     remote_syncstore = HttpClientVersionedChangesSyncstore(
         "s1_remote_client_s0", None, HOST, PORT
     )
@@ -59,13 +61,12 @@ def s1(s0: StoreImpl):
     return StoreImpl(
         "s1",
         remote_syncstore=remote_syncstore,
-        engine=get_engine(db_file=f"{TEST_DB_DIR}/s1.db"),
+        engine=get_engine(db_file=f"{TEST_DB_DIR}/s1.db", echo=SQL_ECHO),
     )
 
 
 @pytest.fixture
 def s2(s0):
-
     remote_syncstore = HttpClientVersionedChangesSyncstore(
         "s2_remote_client_s0", None, HOST, PORT
     )
@@ -73,7 +74,7 @@ def s2(s0):
     return StoreImpl(
         "s2",
         remote_syncstore=remote_syncstore,
-        engine=get_engine(db_file=f"{TEST_DB_DIR}/s2.db"),
+        engine=get_engine(db_file=f"{TEST_DB_DIR}/s2.db", echo=SQL_ECHO),
     )
 
 
@@ -87,7 +88,6 @@ def cleanup_server_process():
 
 
 def test_sync(s1: TodoSyncStore, s2: TodoSyncStore):
-
     list_id = "todolist_1"
 
     # c1: create and sync

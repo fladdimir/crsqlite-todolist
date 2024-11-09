@@ -26,7 +26,7 @@ def finalize_crsqlite(dbapi_connection: Connection, connection_record) -> None:
     cursor.close()
 
 
-def get_engine(db_file: str = "./sqlite_test.db", echo=True) -> Engine:
+def get_engine(db_file: str = "./sqlite_test.db", echo=False) -> Engine:
     engine: Engine = create_engine("sqlite:///" + db_file, echo=echo)
     listen(engine, "connect", load_crsqlite_extension)
     listen(engine, "close", finalize_crsqlite)

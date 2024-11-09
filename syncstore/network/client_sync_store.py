@@ -2,8 +2,26 @@ from dataclasses import dataclass, field
 
 import requests
 
+from syncstore.network.server_sync_store import (
+    LastReceivedVersionRequest,
+    LastReceivedVersionResponse,
+    SiteInfo,
+    changes_query_schema,
+    changes_schema,
+    last_received_version_request_schema,
+    last_received_version_response_schema,
+    site_info_schema,
+    tables_schema,
+)
 from syncstore.syncstore import SyncResult
-from syncstore.versioned_changes_syncstore import Changes, VersionedChangesSyncStore
+from syncstore.versioned_changes_syncstore import (
+    Changes,
+    ChangesQuery,
+    Tables,
+    VersionedChangesSyncStore,
+)
+
+# TODO: generate client from openapi ?
 
 
 @dataclass
@@ -17,47 +35,45 @@ class HttpClientVersionedChangesSyncstore(VersionedChangesSyncStore):
     def __post_init__(self):
         self.syncstore_server = f"http://{self.host}:{self.port}"
 
-    def setup_table_change_tracking(self, tables: list[str]) -> None:
+    def setup_table_change_tracking(self, tables: Tables) -> None:
         r = requests.post(
-            self.syncstore_server + "/setup-table-change-tracking", json=tables
+            self.syncstore_server + "/setup-table-change-tracking",
+            json=tables_schema.dump(tables),
         )
         assert r.status_code == 204
 
     def get_site_id(self) -> str:
         r = requests.get(self.syncstore_server + "/site-id")
         assert r.status_code == 200
-        return r.text
+        info: SiteInfo = site_info_schema.load(r.json())  # type: ignore
+        return info.site_id
 
     def get_last_received_version(self, from_site_id: str) -> int:
         r = requests.get(
             self.syncstore_server + "/last-received-version",
-            params={"from_site_id": from_site_id},
+            params=last_received_version_request_schema.dump(
+                LastReceivedVersionRequest(from_site_id)
+            ),
         )
         assert r.status_code == 200
-        return int(r.text)
+        lrv: LastReceivedVersionResponse = last_received_version_response_schema.loads(
+            r.text
+        )  # type: ignore
+        return lrv.version
 
-    def get_changes(
-        self,
-        since_version: int,
-        from_site_id: str | None = None,
-        not_from_site_id: str | None = None,
-    ) -> Changes:
+    def get_changes(self, changes_query: ChangesQuery) -> Changes:
         r = requests.get(
             self.syncstore_server + "/changes",
-            params={
-                "since_version": since_version,
-                "from_site_id": from_site_id,
-                "not_from_site_id": not_from_site_id,
-            },
+            params=changes_query_schema.dump(changes_query),
         )
         assert r.status_code == 200
-        return Changes.from_json(r.text)
+        return changes_schema.loads(r.text)  # type: ignore
 
     def apply_changes(self, changes: Changes) -> None:
-        # TODO: compress
+        # tbd: compress
         r = requests.post(
-            self.syncstore_server + "/apply-changes",
-            data=changes.to_json(),  # , headers=
+            self.syncstore_server + "/changes",
+            json=changes_schema.dump(changes),
         )
         assert r.status_code == 204
 

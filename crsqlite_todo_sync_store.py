@@ -9,7 +9,7 @@ from entity_change_checking.entity_change_checker import (
 )
 from syncstore.crsqlite_syncstore import CrSqliteSyncStore
 from syncstore.syncstore import SyncResult, SyncStore
-from syncstore.versioned_changes_syncstore import VersionedChangesSyncStore
+from syncstore.versioned_changes_syncstore import Tables, VersionedChangesSyncStore
 from todostore.sql_todostore import SqlTodoStore
 from todostore.todostore import TodoList, TodoStore
 
@@ -28,12 +28,12 @@ class CrSqliteTodoSyncStore(TodoStore, SyncStore, EntityChangeChecker[TodoList, 
         default_factory=EntityChangeCheckerImpl[TodoList, str]
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.todostore = SqlTodoStore(self.name, self.engine)
         self.syncstore = CrSqliteSyncStore(
             self.name, self.remote_syncstore, self.engine
         )
-        self.syncstore.setup_table_change_tracking(self.todostore.get_tables())
+        self.syncstore.setup_table_change_tracking(Tables(self.get_tables()))
 
     def save(self, entity: TodoList) -> None:
         self.todostore.save(entity)

@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
@@ -13,9 +13,12 @@ ID = TypeVar("ID")
 class EntityStore(Generic[T, ID], metaclass=ABCMeta):
     name: str
 
+    @abstractmethod
     def save(self, entity: T) -> None: ...
+    @abstractmethod
     def load(self, entity_id: str) -> T | None: ...
 
+    @abstractmethod
     def get_tables(self) -> list[str]: ...
 
 

@@ -15,6 +15,8 @@ from sqlalchemy.orm import (
 from syncstore.versioned_changes_syncstore import (
     Change,
     Changes,
+    ChangesQuery,
+    Tables,
     Value,
     ValueType,
     VersionedChangesSyncStore,
@@ -26,7 +28,6 @@ class PCrsqliteBase(DeclarativeBase, MappedAsDataclass):
 
 
 class PTrackedPeer(PCrsqliteBase):
-
     __tablename__ = "crsql_tracked_peers"
     site_id: Mapped[bytes] = mapped_column(primary_key=True)
     version: Mapped[int]
@@ -114,9 +115,9 @@ class CrSqliteSyncStore(VersionedChangesSyncStore):
 
     engine: Engine
 
-    def setup_table_change_tracking(self, tables: list[str]) -> None:
+    def setup_table_change_tracking(self, tables: Tables) -> None:
         with self.engine.connect() as c:
-            for t in tables:
+            for t in tables.table_names:
                 c.execute(text(f"SELECT crsql_as_crr('{t}');"))
             c.commit()
 
@@ -150,12 +151,10 @@ class CrSqliteSyncStore(VersionedChangesSyncStore):
                 session.commit()
                 return -1
 
-    def get_changes(
-        self,
-        since_version: int,
-        from_site_id: str | None = None,
-        not_from_site_id: str | None = None,
-    ) -> Changes:
+    def get_changes(self, changes_query: ChangesQuery) -> Changes:
+        since_version = changes_query.since_version
+        from_site_id = changes_query.from_site_id
+        not_from_site_id = changes_query.not_from_site_id
         if not (bool(from_site_id) ^ bool(not_from_site_id)):
             raise Exception("exactly one of the site_id params must be set")
         with Session(self.engine) as session:

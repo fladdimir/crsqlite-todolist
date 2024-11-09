@@ -75,7 +75,6 @@ def create_all(engine: Engine) -> None:
 
 @dataclass
 class SqlTodoStore(TodoStore):
-
     engine: Engine
 
     def __post_init__(self):

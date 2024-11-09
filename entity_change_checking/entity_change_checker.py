@@ -22,7 +22,6 @@ class EntityChangeChecker(Generic[E, EID], metaclass=ABCMeta):
 
 @dataclass
 class EntityChangeCheckerImpl(EntityChangeChecker[E, EID]):
-
     tracked_instances: WeakValueDictionary[EID, E] = field(
         default_factory=WeakValueDictionary[EID, E]
     )

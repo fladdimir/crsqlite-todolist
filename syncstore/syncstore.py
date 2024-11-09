@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 
 
@@ -9,7 +9,8 @@ class SyncResult:
 
 
 @dataclass
-class SyncStore(ABC):
+class SyncStore(metaclass=ABCMeta):
     name: str
 
+    @abstractmethod
     def sync(self) -> SyncResult: ...
